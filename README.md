@@ -3,7 +3,7 @@ An interactive game using object tracking
 
 #### Requirements
 
-1. []Python 2.7](https://www.python.org/downloads/)
+1. [Python 2.7](https://www.python.org/downloads/)
 2. [OpenCV](https://github.com/skvark/opencv-python)
 3. [PyGame](http://www.pygame.org/download.shtml)
 4. [NumPy](https://scipy.org/install.html)
