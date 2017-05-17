@@ -10,6 +10,7 @@ MIT License
 
 # region Imports
 import math
+import time
 import os
 from collections import deque
 from collections import namedtuple
@@ -68,7 +69,7 @@ lives = 10
 # endregion
 
 # region Boxes
-draw_box_collision_circle = True
+draw_box_collision_circle = False
 
 initializedBoxes = False
 box_class = None
@@ -83,9 +84,24 @@ collision_check_skip = False
 clock = pygame.time.Clock()
 # endregion
 
+# region Frame Rate
+num_frames = 0
+# endregion
+
+# region Screen Resolution
+built_on_resolution_width = 1920
+built_on_resolution_height = 1080
+
+screen_resolution_width = 1280
+screen_resolution_height = 720
+# endregion
+
 # region Camera
 camera_index = 0
 camera = cv2.VideoCapture(camera_index)
+
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, screen_resolution_width)
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, screen_resolution_height)
 # endregion
 
 # region Deques
@@ -93,8 +109,15 @@ pts = deque(maxlen=64)
 # endregion
 
 # region PyGame Screen
-screen_width, screen_height = 640, 480
+is_fullscreen = False
+
+screen_width, screen_height = screen_resolution_width, screen_resolution_height
 final_screen = pygame.display.set_mode((screen_width, screen_height))
+
+if is_fullscreen:
+    final_screen = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
+
+pygame.display.set_caption('Protect The Base', '')
 # endregion
 
 # region Explosion Animations
@@ -103,6 +126,8 @@ explosion.initialize()
 
 explosions = []
 # endregion
+
+debug_fps = False
 
 # region Game Loop
 running = True
@@ -203,7 +228,17 @@ def blit_cam_frame(camera_frame, game_screen):
 
 # endregion
 
+# region Resolution
+def CalculateResolutionMultiplication():
+    multiply_width = float(screen_resolution_width) / float(built_on_resolution_width)
+    multiply_height = float(screen_resolution_height) / float(built_on_resolution_height)
+
+    return multiply_width, multiply_height
+# endregion
+
 # region Main Game Loop
+start = time.time()
+
 while running:
     """ Exit the game if the 'ESC' key is pressed """
     for event in pygame.event.get():
@@ -216,6 +251,8 @@ while running:
     final_screen.fill(0)
     frame = get_cam_frame(screen_is_color, camera)
 
+    num_frames += 1
+
     ##############################
 
     """
@@ -224,7 +261,7 @@ while running:
 
     Object tracking is done through tracking a specific range of colors
     """
-    surface_array = pygame.surfarray.array3d(frame.pg)
+    surface_array = frame.org
     hsv = cv2.cvtColor(surface_array, cv2.COLOR_RGB2HSV)
 
     color_mask = cv2.inRange(hsv, color_range_lower, color_range_upper)
@@ -272,15 +309,16 @@ while running:
                 lastFall = ball_y * 1.01
 
     """ Handles the management of the boxes, such as creating and updating them """
-    surface_array = pygame.surfarray.make_surface(surface_array)
+    surface_array = frame.pg
     if initializedBoxes is False:
         box_class = Box(surface_array)
+        box_class.resolution_multiply = CalculateResolutionMultiplication()
         initializedBoxes = True
 
     box_class.screen = surface_array
 
     box_class.box_manager()
-    surface_array = pygame.surfarray.array3d(surface_array)
+    surface_array = frame.org
 
     for index, box in enumerate(box_class.boxes):
         box_size = box.img.get_size()
@@ -359,7 +397,8 @@ while running:
                      drag_trail_final_thickness)
 
     """ Creates a new Pygame surface in order create a new OpenCV frame (which will be used for animations """
-    final_surface_array = pygame.surfarray.make_surface(surface_array)
+    # final_surface_array = pygame.surfarray.make_surface(surface_array)
+    final_surface_array = frame.pg
     final_screen = blit_cam_frame(final_surface_array, final_screen)
 
     """ Creates a new explosion animation, if there are any to create """
@@ -393,10 +432,25 @@ while running:
         final_screen.blit(homeData.img, ((screen_width / 2) - (home_size[0] / 2), screen_height - (home_size[1] / 3)))
 
     """ Displays the two circles covering the base (for looks) """
-    pygame.draw.circle(final_screen, (255, 255, 0), (screen_width / 2, screen_height + 25), 100, 5)
-    pygame.draw.circle(final_screen, (255, 0, 0), (screen_width / 2, screen_height + 25), 90, 5)
+    pygame.draw.circle(final_screen, (255, 255, 0), (screen_width / 2, screen_height + 25),
+                       int(160 * CalculateResolutionMultiplication()[1]), 5)
+    pygame.draw.circle(final_screen, (255, 0, 0), (screen_width / 2, screen_height + 25),
+                       int(150 * CalculateResolutionMultiplication()[1]), 5)
 
     pygame.display.flip()
+# endregion
+
+# region Frame Rate
+end = time.time()
+
+if debug_fps:
+    # Time elapsed
+    seconds = end - start
+    print "Time taken : {0} seconds".format(seconds)
+
+    # Calculate frames per second
+    fps = num_frames / seconds
+    print "Estimated frames per second : {0}".format(fps)
 # endregion
 
 # region Exit

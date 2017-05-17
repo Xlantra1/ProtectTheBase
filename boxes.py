@@ -8,14 +8,14 @@ MIT License
 
 # region Imports
 from collections import namedtuple
-from random import randint
+from random import randint, uniform
 
 import pygame
 
 # endregion
 
 # region Named Tuples
-BoxData = namedtuple('BoxData', 'img rotation location color padding')
+BoxData = namedtuple('BoxData', 'img rotation location color padding div')
 # endregion
 
 
@@ -32,11 +32,13 @@ class Box(object):
 
         self.angle = 0
 
-        self.home_padding = 15
+        self.home_padding = 0
         self.padding = 10
         self.box_speed = 60.0
 
         self.home = []
+
+        self.resolution_multiply = None
 
     # endregion
 
@@ -122,7 +124,7 @@ class Box(object):
         dx, dy = (point[0] - box_location[0], box_location[1] - point[1])
         step_x, step_y = (dx / self.box_speed, dy / self.box_speed)
 
-        return step_x, step_y
+        return int(step_x), int(step_y)
 
     def box_manager(self):
         """
@@ -156,7 +158,7 @@ class Box(object):
                 (random_y,
                  random_x),
                 box_color,
-                self.padding * 2)
+                self.padding * 2, 0)
             self.boxes.append(box_data)
 
         """
@@ -170,7 +172,7 @@ class Box(object):
             starting_angle = 0
 
             home_image = pygame.image.load('home.png').convert_alpha()
-            home_image = self.resize_image(home_image, 3.0)
+            home_image = self.resize_image(home_image, self.resolution_multiply[0])
             home_image = self.rotate_box(home_image, 0)
 
             home_image_size = home_image.get_rect().size
@@ -178,6 +180,10 @@ class Box(object):
             home_start_x = (screen_width / 2) - self.home_padding
             home_start_y = ((screen_height / 2) +
                             (home_image_size[1] / 2)) - self.home_padding
+
+            # 6 and 1.5
+            random_division = uniform(2.5, 6.0)
+            random_division_final = round(random_division * 2) / 2
 
             home_data = BoxData(
                 home_image,
@@ -187,12 +193,13 @@ class Box(object):
                 (255,
                  255,
                  255),
-                self.home_padding)
+                self.home_padding,
+                random_division_final)
             self.home.append(home_data)
         else:
             for index, home in enumerate(self.home):
                 home_image = pygame.image.load('home.png').convert_alpha()
-                home_image = self.resize_image(home_image, 3.0)
+                home_image = self.resize_image(home_image, self.resolution_multiply[0])
 
                 new_rotation = (home.rotation + 1) % 360
 
@@ -203,7 +210,8 @@ class Box(object):
                     new_rotation,
                     home.location,
                     home.color,
-                    home.padding)
+                    home.padding,
+                    home.div)
                 self.home[index] = home_data
 
         """ Loop through each box and re-calculates the rotation and location (as it moves toward the 'home' base). """
@@ -211,35 +219,41 @@ class Box(object):
             box_image = pygame.image.load('square.png').convert_alpha()
             box_image = self.colorize(box_image, box.color)
 
-            # box_image = self.ResizeImage(box_image, 0.90)
-
             new_rotation = (box.rotation + 1) % 360
 
-            # TODO: Fix the hardcoded point
-            points_to_move = self.move_towards_point(box.location, (250, 420))
-            new_location = (
-                box.location[0] +
-                points_to_move[0],
-                box.location[1] -
-                points_to_move[1])
+            if self.home:
+                home = self.home[0]
+                home_location = home.location
+                home_size = home.img.get_rect()
 
-            new_location_x = new_location[0]
-            new_location_y = new_location[1]
+                move_towards_point = ((screen_height / 2) - (home_size.width / 2) + (home_size.width / home.div),
+                                      screen_width - (home_size.height / 3) + (home_size.height / home.div))
 
-            if new_location_x < 0:
-                new_location_x = 0
+                points_to_move = self.move_towards_point(box.location, move_towards_point)
 
-            if new_location_y < 0:
-                new_location_y = 0
+                new_location = (
+                    box.location[0] +
+                    points_to_move[0],
+                    box.location[1] -
+                    points_to_move[1])
 
-            final_location = (new_location_x, new_location_y)
+                new_location_x = new_location[0]
+                new_location_y = new_location[1]
 
-            new_box_image = self.rotate_box(box_image, new_rotation)
-            box_data = BoxData(
-                new_box_image,
-                new_rotation,
-                final_location,
-                box.color,
-                box.padding)
-            self.boxes[index] = box_data
+                if new_location_x < 0:
+                    new_location_x = 0
+
+                if new_location_y < 0:
+                    new_location_y = 0
+
+                final_location = (new_location_x, new_location_y)
+
+                new_box_image = self.rotate_box(box_image, new_rotation)
+                box_data = BoxData(
+                    new_box_image,
+                    new_rotation,
+                    final_location,
+                    box.color,
+                    box.padding, 0)
+                self.boxes[index] = box_data
 # endregion

@@ -40,4 +40,12 @@ By default, there are no debugging settings enabled. These include ball detectio
  
  - **draw_box_collision_circle**: whether or not the box collision circle is shown
  
+ #### Other Settings
  
+ The following settings are able to be changed:
+ 
+ - **screen_resolution_width**: determines the current width of the screen
+ - **screen_resolution_height**: determines the current height of the screen
+ - **is_fullscreen**: determines whether or not the screen should be fullscreen or not
+
+Recommended settings are 1280x720 non-fullscreen
